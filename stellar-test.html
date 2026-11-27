@@ -330,13 +330,17 @@
     }, timeoutMs || 15000);
     pendingAck = waiter;
     try {
-      if (characteristic.properties && characteristic.properties.writeWithoutResponse &&
-          typeof characteristic.writeValueWithoutResponse === "function") {
+      const useWriteWithoutResponse = !!(characteristic.properties && characteristic.properties.writeWithoutResponse &&
+          typeof characteristic.writeValueWithoutResponse === "function");
+      log("TX attempt cmd=0x" + command.toString(16).padStart(2, "0") + " len=" + packet.length +
+          " method=" + (useWriteWithoutResponse ? "WriteWithoutResponse" : "WriteWithResponse") +
+          " [" + hex + (packet.length > 12 ? " …" : "") + "]", "diag");
+      if (useWriteWithoutResponse) {
         await characteristic.writeValueWithoutResponse(packet);
       } else {
         await characteristic.writeValueWithResponse(packet);
       }
-      log("TX cmd=0x" + command.toString(16).padStart(2, "0") + " len=" + packet.length + " [" + hex + (packet.length > 12 ? " …" : "") + "]", "diag");
+      log("GATT write accepted cmd=0x" + command.toString(16).padStart(2, "0"), "diag");
       await ack;
       log("ACK cmd=0x" + command.toString(16).padStart(2, "0") + " OK", "ok");
     } catch (error) {
