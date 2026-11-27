@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111713">
+  <meta name="description" content="BUG-Tags Stellar EPD Lab — Hanshow CC2640 FFF0/FFF1 image transfer test">
+  <title>BUG-Tags · Stellar EPD Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg:#0c100e; --panel:#131a16; --panel2:#18211c; --line:#28362e;
+      --text:#edf5ef; --muted:#92a399; --green:#b8f36b; --green2:#d4ff9a;
+      --red:#ff786e; --amber:#f4c56b; --blue:#91c7ed; --radius:18px;
+      --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);color:var(--text)
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% -10%,rgba(184,243,107,.12),transparent 38%),radial-gradient(ellipse at -10% 35%,rgba(63,116,79,.12),transparent 35%),var(--bg)}
+    button,input{font:inherit}button{cursor:pointer}
+    .shell{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:24px 0 50px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}
+    .brand{display:flex;align-items:center;gap:12px;min-width:0}
+    .logo{width:43px;height:43px;border-radius:14px;display:grid;place-items:center;color:#10170d;background:var(--green);font-weight:950;letter-spacing:-2px}
+    .brand-name{font-size:19px;font-weight:850;letter-spacing:-.5px}
+    .brand-sub{color:var(--muted);font-size:10px;letter-spacing:1.5px;margin-top:3px}
+    a{color:var(--green);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .tag{border:1px solid var(--line);border-radius:99px;padding:7px 10px;color:var(--muted);font:10px var(--mono);white-space:nowrap}
+    .hero{border:1px solid var(--line);border-radius:var(--radius);padding:25px 28px;margin-bottom:16px;background:linear-gradient(145deg,rgba(25,35,29,.96),rgba(17,24,20,.96));position:relative;overflow:hidden}
+    .eyebrow{color:var(--green);font:10px var(--mono);letter-spacing:2px;text-transform:uppercase}
+    h1{margin:11px 0 9px;font-size:clamp(30px,5vw,45px);letter-spacing:-1.7px;line-height:1}
+    .hero p{margin:0;color:var(--muted);font-size:13px;line-height:1.7;max-width:750px}
+    .hero-orbit{position:absolute;width:220px;height:220px;border:1px solid rgba(184,243,107,.14);border-radius:50%;right:-60px;bottom:-145px;pointer-events:none}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+    .panel{border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:linear-gradient(145deg,rgba(25,35,29,.96),rgba(17,24,20,.96));min-width:0}
+    .wide{grid-column:1/-1}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
+    .panel-title{margin:0;font-size:14px;font-weight:800}
+    .kicker{color:var(--muted);font:10px var(--mono);letter-spacing:1px}
+    .actions{display:flex;flex-wrap:wrap;gap:8px}
+    .btn{border:1px solid var(--line);color:var(--text);background:#202b24;padding:10px 13px;border-radius:11px;font-weight:700;font-size:11px;transition:.15s ease}
+    .btn:hover:not(:disabled){border-color:#65864c;transform:translateY(-1px)}
+    .btn:disabled{opacity:.38;cursor:not-allowed}
+    .primary{color:#15200f;background:var(--green);border-color:var(--green)}
+    .primary:hover:not(:disabled){background:var(--green2)}
+    .danger{color:#ffaca5;background:rgba(255,120,110,.08);border-color:rgba(255,120,110,.3)}
+    .field{display:grid;gap:7px;margin-bottom:14px}
+    .field label{color:var(--muted);font-size:11px;font-weight:650}
+    input[type=file]{width:100%;font-size:11px;color:var(--muted);background:#0d130f;border:1px solid var(--line);border-radius:11px;padding:10px}
+    input[type=range]{width:100%;accent-color:var(--green)}
+    .hint{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:10px;line-height:1.5}
+    .state{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:11px;margin:12px 0}
+    .dot{width:8px;height:8px;border-radius:50%;background:#68756d;display:inline-block;flex:none}
+    .dot.online{background:var(--green);box-shadow:0 0 12px rgba(184,243,107,.7)}
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+    .metric{padding:11px;background:var(--panel2);border:1px solid #29372f;border-radius:12px;min-width:0}
+    .metric-label{color:var(--muted);font-size:9px;margin-bottom:7px}
+    .metric-value{font:11px var(--mono);overflow-wrap:anywhere}
+    .canvas-wrap{background:#080c09;border:1px solid #344238;border-radius:12px;padding:10px;display:grid;place-items:center}
+    canvas{display:block;width:min(100%,636px);height:auto;image-rendering:pixelated;background:#fff;border:1px solid #cbd2c8;aspect-ratio:212/104}
+    .progress{height:8px;border-radius:20px;background:#0a100c;border:1px solid var(--line);overflow:hidden;margin:10px 0 6px}
+    .progress>div{height:100%;width:0;background:var(--green);transition:width .12s}
+    .log{background:#090e0b;border:1px solid #243129;border-radius:12px;padding:12px;min-height:120px;max-height:290px;overflow:auto;font:10px/1.7 var(--mono);color:#a6b5aa;white-space:pre-wrap;overflow-wrap:anywhere}
+    .log .ok{color:var(--green)}.log .warn{color:var(--amber)}.log .err{color:var(--red)}.log .diag{color:var(--blue)}
+    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .step{background:var(--panel2);border:1px solid #29372f;border-radius:12px;padding:11px}
+    .step b{display:block;font:11px var(--mono);color:var(--green);margin-bottom:5px}
+    .step span{font-size:10px;color:var(--muted);line-height:1.5}
+    .notice{padding:11px 13px;border-radius:11px;background:rgba(244,197,107,.07);border:1px solid rgba(244,197,107,.2);color:#d8c08e;font-size:10px;line-height:1.6;margin-top:12px}
+    .footer{display:flex;justify-content:space-between;gap:12px;color:#64756a;font-size:10px;padding:17px 3px 0}
+    @media(max-width:760px){.shell{width:min(100% - 22px,620px);padding-top:15px}.grid{grid-template-columns:1fr;gap:11px}.wide{grid-column:auto}.hero{padding:21px}.panel{padding:17px}.steps{grid-template-columns:1fr 1fr}.footer{flex-direction:column}.tag{font-size:9px}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div class="brand"><div class="logo">BT</div><div><div class="brand-name">BUG-Tags</div><div class="brand-sub">Stellar EPD Lab</div></div></div>
+    <div class="actions"><a class="tag" href="./index.html">← BUG-Tags 主控制台</a><span class="tag">LEGACY FFF0 / FFF1 · V0.1</span></div>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">// HARDWARE VALIDATION · HANSHOW CC2640</div>
+    <h1>Stellar <span style="color:var(--green)">EPD Lab.</span></h1>
+    <p>用于测试 ihopenot/ihopebleepd 兼容固件。此页面使用独立的 FFF0/FFF1 BLE 服务与旧版 EPD 指令，不会调用或修改 BUG-Tags 自有协议。当前阶段提供黑白图片上传、整屏清除、逐包 Notify 确认和传输日志。</p>
+    <div class="hero-orbit"></div>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <div class="panel-head"><h2 class="panel-title">01 / BLE 设备连接</h2><span class="kicker">FFF0 · FFF1</span></div>
+      <div class="actions">
+        <button class="btn primary" id="connectBtn">连接 Stellar 标签</button>
+        <button class="btn" id="disconnectBtn" disabled>断开连接</button>
+      </div>
+      <div class="state"><i class="dot" id="linkDot"></i><span id="linkState">未连接</span></div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">设备名称</div><div class="metric-value" id="deviceValue">—</div></div>
+        <div class="metric"><div class="metric-label">Notify</div><div class="metric-value" id="notifyValue">未订阅</div></div>
+        <div class="metric"><div class="metric-label">写入模式</div><div class="metric-value" id="writeValue">—</div></div>
+      </div>
+      <div class="notice">连接前请先断开 nRF Connect 或其他手机/电脑 BLE 客户端。页面会自动订阅 FFF1 Notify；上传期间请保持页面前台，不要锁屏或切换应用。</div>
+      <div style="height:16px"></div>
+      <div class="panel-head"><h2 class="panel-title">屏幕快速测试</h2><span class="kicker">FULL REFRESH</span></div>
+      <div class="actions">
+        <button class="btn" id="whiteBtn" disabled>整屏白色</button>
+        <button class="btn" id="blackBtn" disabled>整屏黑色</button>
+      </div>
+      <div class="hint" style="margin-top:9px"><span>白屏：01 FF</span><span>黑屏：01 00</span></div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head"><h2 class="panel-title">02 / 黑白图片编辑器</h2><span class="kicker">212 × 104</span></div>
+      <div class="field">
+        <label for="imageFile">选择 PNG / JPG / WEBP 图片</label>
+        <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/bmp">
+      </div>
+      <div class="canvas-wrap"><canvas id="preview" width="212" height="104"></canvas></div>
+      <div class="field" style="margin-top:13px">
+        <label for="threshold">黑白阈值 <strong id="thresholdValue">128</strong></label>
+        <input id="threshold" type="range" min="1" max="254" value="128">
+        <div class="hint"><span>左侧更容易变黑</span><span>右侧更容易变白</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="sampleBtn">载入测试图案</button>
+        <button class="btn primary" id="uploadBtn" disabled>上传图片到屏幕</button>
+      </div>
+      <div class="progress"><div id="progressBar"></div></div>
+      <div class="hint"><span id="progressText">尚未开始</span><span id="byteText">0 / 2756 bytes</span></div>
+    </article>
+
+    <article class="panel wide">
+      <div class="panel-head"><h2 class="panel-title">03 / 图片上传指令序列</h2><span class="kicker">ACK PER PACKET</span></div>
+      <div class="steps">
+        <div class="step"><b>00 01</b><span>初始化黑白模式</span></div>
+        <div class="step"><b>04</b><span>准备黑色图像 RAM</span></div>
+        <div class="step"><b>02 + DATA</b><span>发送 2756 字节图像，每包 200 字节</span></div>
+        <div class="step"><b>03</b><span>执行屏幕刷新并等待 BUSY 释放</span></div>
+      </div>
+      <div class="notice">发送顺序严格等待每条命令的 FFF1 Notify 回应（[命令字节, 状态码]）。图像数据包为 201 字节（1 字节命令 + 200 字节数据），低于固件 FFF1 特征值的 251 字节上限。</div>
+    </article>
+
+    <article class="panel wide">
+      <div class="panel-head"><h2 class="panel-title">04 / BLE 通讯日志</h2><div class="actions"><span class="kicker">DIAGNOSTICS</span><button id="clearLogBtn" class="btn">清空日志</button></div></div>
+      <div id="logBox" class="log">[BOOT] Stellar EPD Lab ready.
+[INFO] 独立 FFF0/FFF1 测试模块；不会调用 BUG-Tags b07a 自有协议。</div>
+    </article>
+  </section>
+  <footer class="footer"><span>BUG-Tags · Stellar EPD Lab · based on ihopenot/ihopebleepd protocol</span><span>Web Bluetooth 需要 HTTPS（GitHub Pages 可用）。</span></footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const UUID = {
+    service: "f000fff0-0451-4000-b000-000000000000",
+    data: "f000fff1-0451-4000-b000-000000000000"
+  };
+  const IMAGE_WIDTH = 212, IMAGE_HEIGHT = 104, IMAGE_BYTES = 2756;
+  const CHUNK_DATA = 200;
+  const $ = id => document.getElementById(id);
+  let device = null, server = null, characteristic = null;
+  let connected = false, busy = false, pendingAck = null;
+  let sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = IMAGE_WIDTH; sourceCanvas.height = IMAGE_HEIGHT;
+  let sourceReady = false;
+
+  function log(message, kind) {
+    const line = document.createElement("div");
+    if (kind) line.className = kind;
+    const d = new Date();
+    const stamp = d.toLocaleTimeString() + "." + String(d.getMilliseconds()).padStart(3, "0");
+    line.textContent = "[" + stamp + "] " + message;
+    $("logBox").appendChild(line);
+    $("logBox").scrollTop = $("logBox").scrollHeight;
+  }
+  function setProgress(percent, message, bytes) {
+    $("progressBar").style.width = Math.max(0, Math.min(100, percent)) + "%";
+    $("progressText").textContent = message;
+    $("byteText").textContent = (bytes || 0) + " / " + IMAGE_BYTES + " bytes";
+  }
+  function updateUI() {
+    $("connectBtn").disabled = connected || busy;
+    $("disconnectBtn").disabled = !connected || busy;
+    $("whiteBtn").disabled = !connected || busy;
+    $("blackBtn").disabled = !connected || busy;
+    $("uploadBtn").disabled = !connected || busy || !sourceReady;
+    $("linkDot").classList.toggle("online", connected);
+    $("linkState").textContent = connected ? "已连接 · Notify 已订阅" : "未连接";
+    if (!connected) $("notifyValue").textContent = "未订阅";
+  }
+  function setBusy(value) { busy = value; updateUI(); }
+
+  function drawSample() {
+    const ctx = sourceCanvas.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(4, 4, 204, 3);
+    ctx.fillRect(4, 97, 204, 3);
+    ctx.font = "bold 18px sans-serif";
+    ctx.fillText("STELLAR EPD", 10, 29);
+    ctx.font = "bold 23px monospace";
+    ctx.fillText("BUG-TAGS", 10, 58);
+    ctx.font = "11px monospace";
+    ctx.fillText("CC2640  /  212x104", 10, 78);
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(174, 37, 27, 47);
+    sourceReady = true;
+    renderPreview();
+    log("已载入内置黑白测试图案。", "ok");
+  }
+  function renderPreview() {
+    const target = $("preview"), out = target.getContext("2d");
+    const src = sourceCanvas.getContext("2d").getImageData(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+    const pixels = src.data, threshold = Number($("threshold").value);
+    for (let i = 0; i < pixels.length; i += 4) {
+      const y = Math.round(0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]);
+      const v = y >= threshold ? 255 : 0;
+      pixels[i] = pixels[i + 1] = pixels[i + 2] = v;
+      pixels[i + 3] = 255;
+    }
+    out.putImageData(src, 0, 0);
+    $("thresholdValue").textContent = String(threshold);
+    $("uploadBtn").disabled = !connected || busy || !sourceReady;
+  }
+  function encodeImage() {
+    const data = $("preview").getContext("2d").getImageData(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT).data;
+    const bytes = [];
+    let bits = 0, count = 0;
+    // Same pixel traversal as the upstream web tool: x descending, y ascending, MSB first.
+    for (let x = IMAGE_WIDTH - 1; x >= 0; x--) {
+      for (let y = 0; y < IMAGE_HEIGHT; y++) {
+        const index = (IMAGE_WIDTH * 4 * y) + x * 4;
+        const isWhite = data[index] > 0 && data[index + 1] > 0 && data[index + 2] > 0;
+        bits = (bits << 1) | (isWhite ? 1 : 0);
+        count++;
+        if (count === 8) {
+          bytes.push(bits & 255);
+          bits = 0; count = 0;
+        }
+      }
+    }
+    if (count !== 0 || bytes.length !== IMAGE_BYTES) throw new Error("图像编码长度错误：" + bytes.length);
+    return new Uint8Array(bytes);
+  }
+  function onNotification(event) {
+    const view = event.target.value;
+    const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+    log("RX Notify [" + bytes.length + "B]: " + hex, "diag");
+    const waiter = pendingAck;
+    if (!waiter) { log("收到没有对应等待命令的 Notify。", "warn"); return; }
+    if (bytes.length < 2) { log("Notify 长度不足 2 字节，忽略。", "warn"); return; }
+    if (bytes[0] !== waiter.command) {
+      log("Notify 命令不匹配：期望 0x" + waiter.command.toString(16) + "，实际 0x" + bytes[0].toString(16), "warn");
+      return;
+    }
+    pendingAck = null;
+    clearTimeout(waiter.timer);
+    if (bytes[1] === 0) {
+      waiter.resolve(bytes);
+    } else {
+      waiter.reject(new Error("设备返回状态码 0x" + bytes[1].toString(16).padStart(2, "0") + "（命令 0x" + bytes[0].toString(16).padStart(2, "0") + "）"));
+    }
+  }
+  function onDisconnected() {
+    connected = false;
+    characteristic = null; server = null;
+    if (pendingAck) {
+      clearTimeout(pendingAck.timer);
+      pendingAck.reject(new Error("BLE 链路已断开"));
+      pendingAck = null;
+    }
+    log("GATT DISCONNECTED" , "warn");
+    updateUI();
+  }
+  async function connect() {
+    if (!("bluetooth" in navigator)) throw new Error("当前浏览器不支持 Web Bluetooth，请使用 Android Chrome 或桌面 Chrome/Edge。");
+    if (device && device.gatt && device.gatt.connected) throw new Error("检测到设备已有连接；请先断开后重试。");
+    log("正在扫描设备名以 Ihopeseral_uarttrans 开头的标签…");
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "Ihopeseral_uarttrans" }],
+      optionalServices: [UUID.service]
+    });
+    try {
+      device.addEventListener("gattserverdisconnected", onDisconnected);
+      $("deviceValue").textContent = device.name || "Stellar";
+      log("已选择设备：" + (device.name || "unknown"));
+      server = await device.gatt.connect();
+      log("GATT 已连接，正在发现 FFF0 服务…", "diag");
+      const service = await server.getPrimaryService(UUID.service);
+      characteristic = await service.getCharacteristic(UUID.data);
+      const props = characteristic.properties || {};
+      log("FFF1 properties: write=" + !!props.write + ", writeWithoutResponse=" + !!props.writeWithoutResponse + ", notify=" + !!props.notify, "diag");
+      if (!props.notify) throw new Error("FFF1 特征没有 Notify 属性，无法接收指令确认。");
+      if (typeof characteristic.writeValueWithoutResponse !== "function" && typeof characteristic.writeValueWithResponse !== "function") {
+        throw new Error("浏览器没有可用的 GATT 写入 API。");
+      }
+      characteristic.addEventListener("characteristicvaluechanged", onNotification);
+      await characteristic.startNotifications();
+      if (!device.gatt.connected) throw new Error("Notify 订阅返回后 GATT 已断开。");
+      connected = true;
+      $("notifyValue").textContent = "已启用";
+      $("writeValue").textContent = props.writeWithoutResponse ? "WNR" : "Write";
+      log("FFF0/FFF1 就绪，Notify 订阅成功。", "ok");
+      updateUI();
+    } catch (error) {
+      if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+      characteristic = null;
+      server = null;
+      connected = false;
+      updateUI();
+      throw error;
+    }
+  }
+  async function sendCommand(packet, timeoutMs) {
+    if (!connected || !characteristic) throw new Error("Stellar 标签尚未连接。");
+    if (pendingAck) throw new Error("上一条命令尚未收到 Notify，禁止并发发送。");
+    if (!packet || packet.length < 1 || packet.length > 251) throw new Error("命令长度超出固件允许范围（1–251 字节）。");
+    const command = packet[0];
+    const hex = Array.from(packet, b => b.toString(16).padStart(2, "0").toUpperCase()).slice(0, 12).join(" ");
+    const waiter = {};
+    const ack = new Promise((resolve, reject) => { waiter.resolve = resolve; waiter.reject = reject; });
+    waiter.command = command;
+    waiter.timer = setTimeout(() => {
+      if (pendingAck === waiter) {
+        pendingAck = null;
+        waiter.reject(new Error("等待 Notify 超时：" + (timeoutMs / 1000) + " 秒，命令 0x" + command.toString(16).padStart(2, "0")));
+      }
+    }, timeoutMs || 15000);
+    pendingAck = waiter;
+    try {
+      if (characteristic.properties && characteristic.properties.writeWithoutResponse &&
+          typeof characteristic.writeValueWithoutResponse === "function") {
+        await characteristic.writeValueWithoutResponse(packet);
+      } else {
+        await characteristic.writeValueWithResponse(packet);
+      }
+      log("TX cmd=0x" + command.toString(16).padStart(2, "0") + " len=" + packet.length + " [" + hex + (packet.length > 12 ? " …" : "") + "]", "diag");
+      await ack;
+      log("ACK cmd=0x" + command.toString(16).padStart(2, "0") + " OK", "ok");
+    } catch (error) {
+      if (pendingAck === waiter) {
+        pendingAck = null;
+        clearTimeout(waiter.timer);
+      }
+      throw error;
+    }
+  }
+  async function runAction(action) {
+    if (busy) return;
+    setBusy(true);
+    try { await action(); }
+    catch (error) { log(error && error.message ? error.message : String(error), "err"); }
+    finally { setBusy(false); }
+  }
+  async function clearScreen(fill) {
+    log("开始整屏清除，填充值 0x" + fill.toString(16).padStart(2, "0") + "。", "warn");
+    await sendCommand(new Uint8Array([0x01, fill]), 60000);
+    log("整屏清除成功。", "ok");
+  }
+  async function uploadImage() {
+    const image = encodeImage();
+    if (image.length !== IMAGE_BYTES) throw new Error("期望 2756 字节，实际 " + image.length);
+    const totalChunks = Math.ceil(image.length / CHUNK_DATA);
+    log("开始上传黑白图片：212×104 / " + image.length + " bytes / " + totalChunks + " packets。", "warn");
+    setProgress(0, "初始化黑白模式…", 0);
+    await sendCommand(new Uint8Array([0x00, 0x01]), 20000);
+    setProgress(2, "准备图像 RAM…", 0);
+    await sendCommand(new Uint8Array([0x04]), 15000);
+    for (let offset = 0, part = 0; offset < image.length; offset += CHUNK_DATA, part++) {
+      const chunk = image.slice(offset, Math.min(offset + CHUNK_DATA, image.length));
+      const packet = new Uint8Array(1 + chunk.length);
+      packet[0] = 0x02;
+      packet.set(chunk, 1);
+      await sendCommand(packet, 20000);
+      const sent = Math.min(offset + chunk.length, image.length);
+      setProgress((sent / image.length) * 94, "图像数据 " + (part + 1) + " / " + totalChunks + " 包已确认", sent);
+      log("图像分块 " + (part + 1) + "/" + totalChunks + " 已确认，" + sent + "/" + image.length + " bytes。", "ok");
+    }
+    setProgress(96, "数据已传完，正在刷新电子纸…", image.length);
+    await sendCommand(new Uint8Array([0x03]), 90000);
+    setProgress(100, "上传完成 · 屏幕刷新成功", image.length);
+    log("全部图片数据传输完成，收到 UPDATE 命令成功响应。", "ok");
+  }
+  $("connectBtn").addEventListener("click", () => runAction(connect));
+  $("disconnectBtn").addEventListener("click", () => runAction(async () => {
+    if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+    else onDisconnected();
+  }));
+  $("whiteBtn").addEventListener("click", () => runAction(() => clearScreen(0xFF)));
+  $("blackBtn").addEventListener("click", () => runAction(() => clearScreen(0x00)));
+  $("uploadBtn").addEventListener("click", () => runAction(uploadImage));
+  $("clearLogBtn").addEventListener("click", () => { $("logBox").textContent = "[INFO] Log cleared."; });
+  $("threshold").addEventListener("input", renderPreview);
+  $("sampleBtn").addEventListener("click", drawSample);
+  $("imageFile").addEventListener("change", () => {
+    const file = $("imageFile").files && $("imageFile").files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const ctx = sourceCanvas.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+      ctx.drawImage(image, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+      URL.revokeObjectURL(url);
+      sourceReady = true;
+      renderPreview();
+      log("已载入图片：" + file.name + "（原始 " + image.naturalWidth + "×" + image.naturalHeight + "，已缩放到 212×104）", "ok");
+    };
+    image.onerror = () => { URL.revokeObjectURL(url); log("图片读取失败，请换用 PNG/JPG/WEBP。", "err"); };
+    image.src = url;
+  });
+  drawSample();
+  setProgress(0, "尚未开始", 0);
+  updateUI();
+  if (!window.isSecureContext) log("当前不是安全上下文；请通过 GitHub Pages HTTPS 打开本页。", "warn");
+  if (!("bluetooth" in navigator)) log("当前浏览器不提供 Web Bluetooth API。", "warn");
+})();
+</script>
+</body>
+</html>
