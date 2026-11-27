@@ -282,27 +282,36 @@
       filters: [{ namePrefix: "Ihopeseral_uarttrans" }],
       optionalServices: [UUID.service]
     });
-    device.addEventListener("gattserverdisconnected", onDisconnected);
-    $("deviceValue").textContent = device.name || "Stellar";
-    log("已选择设备：" + (device.name || "unknown"));
-    server = await device.gatt.connect();
-    log("GATT 已连接，正在发现 FFF0 服务…", "diag");
-    const service = await server.getPrimaryService(UUID.service);
-    characteristic = await service.getCharacteristic(UUID.data);
-    const props = characteristic.properties || {};
-    log("FFF1 properties: write=" + !!props.write + ", writeWithoutResponse=" + !!props.writeWithoutResponse + ", notify=" + !!props.notify, "diag");
-    if (!props.notify) throw new Error("FFF1 特征没有 Notify 属性，无法接收指令确认。");
-    if (typeof characteristic.writeValueWithoutResponse !== "function" && typeof characteristic.writeValueWithResponse !== "function") {
-      throw new Error("浏览器没有可用的 GATT 写入 API。");
+    try {
+      device.addEventListener("gattserverdisconnected", onDisconnected);
+      $("deviceValue").textContent = device.name || "Stellar";
+      log("已选择设备：" + (device.name || "unknown"));
+      server = await device.gatt.connect();
+      log("GATT 已连接，正在发现 FFF0 服务…", "diag");
+      const service = await server.getPrimaryService(UUID.service);
+      characteristic = await service.getCharacteristic(UUID.data);
+      const props = characteristic.properties || {};
+      log("FFF1 properties: write=" + !!props.write + ", writeWithoutResponse=" + !!props.writeWithoutResponse + ", notify=" + !!props.notify, "diag");
+      if (!props.notify) throw new Error("FFF1 特征没有 Notify 属性，无法接收指令确认。");
+      if (typeof characteristic.writeValueWithoutResponse !== "function" && typeof characteristic.writeValueWithResponse !== "function") {
+        throw new Error("浏览器没有可用的 GATT 写入 API。");
+      }
+      characteristic.addEventListener("characteristicvaluechanged", onNotification);
+      await characteristic.startNotifications();
+      if (!device.gatt.connected) throw new Error("Notify 订阅返回后 GATT 已断开。");
+      connected = true;
+      $("notifyValue").textContent = "已启用";
+      $("writeValue").textContent = props.writeWithoutResponse ? "WNR" : "Write";
+      log("FFF0/FFF1 就绪，Notify 订阅成功。", "ok");
+      updateUI();
+    } catch (error) {
+      if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+      characteristic = null;
+      server = null;
+      connected = false;
+      updateUI();
+      throw error;
     }
-    characteristic.addEventListener("characteristicvaluechanged", onNotification);
-    await characteristic.startNotifications();
-    if (!device.gatt.connected) throw new Error("Notify 订阅返回后 GATT 已断开。");
-    connected = true;
-    $("notifyValue").textContent = "已启用";
-    $("writeValue").textContent = props.writeWithoutResponse ? "WNR" : "Write";
-    log("FFF0/FFF1 就绪，Notify 订阅成功。", "ok");
-    updateUI();
   }
   async function sendCommand(packet, timeoutMs) {
     if (!connected || !characteristic) throw new Error("Stellar 标签尚未连接。");
