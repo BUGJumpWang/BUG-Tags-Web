@@ -228,7 +228,7 @@
     const bytes = [];
     let bits = 0, count = 0;
     // Same pixel traversal as the upstream web tool: x descending, y ascending, MSB first.
-    for (let x = IMAGE_WIDTH - 1; x >= 0; x--) {
+    for (let x = 0; x < IMAGE_WIDTH; x++) {
       for (let y = 0; y < IMAGE_HEIGHT; y++) {
         const index = (IMAGE_WIDTH * 4 * y) + x * 4;
         const isWhite = data[index] > 0 && data[index + 1] > 0 && data[index + 2] > 0;
