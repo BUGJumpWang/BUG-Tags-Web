@@ -59,7 +59,7 @@
     .metric-label{color:var(--muted);font-size:9px;margin-bottom:7px}
     .metric-value{font:11px var(--mono);overflow-wrap:anywhere}
     .canvas-wrap{background:#080c09;border:1px solid #344238;border-radius:12px;padding:10px;display:grid;place-items:center}
-    canvas{display:block;width:min(100%,636px);height:auto;image-rendering:pixelated;background:#fff;border:1px solid #cbd2c8;aspect-ratio:212/104;transform:rotate(180deg)}
+    canvas{display:block;width:min(100%,636px);height:auto;image-rendering:pixelated;background:#fff;border:1px solid #cbd2c8;aspect-ratio:212/104}
     .progress{height:8px;border-radius:20px;background:#0a100c;border:1px solid var(--line);overflow:hidden;margin:10px 0 6px}
     .progress>div{height:100%;width:0;background:var(--green);transition:width .12s}
     .log{background:#090e0b;border:1px solid #243129;border-radius:12px;padding:12px;min-height:120px;max-height:290px;overflow:auto;font:10px/1.7 var(--mono);color:#a6b5aa;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -227,7 +227,7 @@
     const data = $("preview").getContext("2d").getImageData(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT).data;
     const bytes = [];
     let bits = 0, count = 0;
-    // Preserve the established panel RAM scan order, but read source pixels from the opposite X and Y coordinates to rotate the final image by 180 degrees. Preview CSS uses the same 180-degree rotation.
+    // Keep the web preview in its natural upright orientation. Reverse source X and Y only while packing the outgoing bitmap, so the physical EPD receives a 180-degree-rotated image.
     for (let x = IMAGE_WIDTH - 1; x >= 0; x--) {
       for (let y = IMAGE_HEIGHT - 1; y >= 0; y--) {
         const sourceX = IMAGE_WIDTH - 1 - x;
