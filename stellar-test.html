@@ -227,8 +227,8 @@
     const data = $("preview").getContext("2d").getImageData(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT).data;
     const bytes = [];
     let bits = 0, count = 0;
-    // Same pixel traversal as the upstream web tool: x descending, y ascending, MSB first.
-    for (let x = IMAGE_WIDTH - 1; x >= 0; x--) {
+    // Panel orientation correction: scan x left-to-right, y top-to-bottom, MSB first.
+    for (let x = 0; x < IMAGE_WIDTH; x++) {
       for (let y = 0; y < IMAGE_HEIGHT; y++) {
         const index = (IMAGE_WIDTH * 4 * y) + x * 4;
         const isWhite = data[index] > 0 && data[index + 1] > 0 && data[index + 2] > 0;
