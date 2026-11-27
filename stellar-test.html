@@ -227,9 +227,9 @@
     const data = $("preview").getContext("2d").getImageData(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT).data;
     const bytes = [];
     let bits = 0, count = 0;
-    // Panel orientation correction: scan x left-to-right, y top-to-bottom, MSB first.
-    for (let x = 0; x < IMAGE_WIDTH; x++) {
-      for (let y = 0; y < IMAGE_HEIGHT; y++) {
+    // The 212x104 canvas is rotated relative to the 104x212 panel: x follows panel rows (Y counter decrements), while y spans each horizontal 104-pixel row. Reverse y to compensate the panel's horizontal mirror; keep x descending to match firmware RAM scan.
+    for (let x = IMAGE_WIDTH - 1; x >= 0; x--) {
+      for (let y = IMAGE_HEIGHT - 1; y >= 0; y--) {
         const index = (IMAGE_WIDTH * 4 * y) + x * 4;
         const isWhite = data[index] > 0 && data[index + 1] > 0 && data[index + 2] > 0;
         bits = (bits << 1) | (isWhite ? 1 : 0);
