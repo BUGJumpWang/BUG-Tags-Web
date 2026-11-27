@@ -135,10 +135,10 @@
       <div class="steps">
         <div class="step"><b>00 01</b><span>初始化黑白模式</span></div>
         <div class="step"><b>04</b><span>准备黑色图像 RAM</span></div>
-        <div class="step"><b>02 + DATA</b><span>发送 2756 字节图像，每包 200 字节</span></div>
+        <div class="step"><b>02 + DATA</b><span>发送 2756 字节图像，每包 19 字节数据（默认 MTU 兼容模式）</span></div>
         <div class="step"><b>03</b><span>执行屏幕刷新并等待 BUSY 释放</span></div>
       </div>
-      <div class="notice">发送顺序严格等待每条命令的 FFF1 Notify 回应（[命令字节, 状态码]）。图像数据包为 201 字节（1 字节命令 + 200 字节数据），低于固件 FFF1 特征值的 251 字节上限。</div>
+      <div class="notice">发送顺序严格等待每条命令的 FFF1 Notify 回应（[命令字节, 状态码]）。为兼容默认 ATT MTU 23，图像数据包限制为 20 字节（1 字节命令 + 19 字节数据），共 146 个数据包。后续确认设备端与浏览器端协商出更大 MTU 后，再单独测试大包提速。</div>
     </article>
 
     <article class="panel wide">
@@ -158,7 +158,7 @@
     data: "f000fff1-0451-4000-b000-000000000000"
   };
   const IMAGE_WIDTH = 212, IMAGE_HEIGHT = 104, IMAGE_BYTES = 2756;
-  const CHUNK_DATA = 200;
+  const CHUNK_DATA = 19;
   const $ = id => document.getElementById(id);
   let device = null, server = null, characteristic = null;
   let connected = false, busy = false, pendingAck = null;
