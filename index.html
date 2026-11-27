@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111713">
+  <meta name="description" content="BUG-Tags — 自研电子价签 BLE 管理控制台">
+  <title>BUG-Tags · E-Paper Control</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0c100e;
+      --panel: #131a16;
+      --panel-2: #18211c;
+      --line: #28362e;
+      --text: #edf5ef;
+      --muted: #92a399;
+      --green: #b8f36b;
+      --green-2: #d4ff9a;
+      --red: #ff786e;
+      --amber: #f4c56b;
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 85% -10%, rgba(184,243,107,.12), transparent 38%),
+        radial-gradient(ellipse at -10% 35%, rgba(63,116,79,.12), transparent 35%),
+        var(--bg);
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 54px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 28px; }
+    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+    .logo {
+      width: 45px; height: 45px; border-radius: 14px; display: grid; place-items: center;
+      color: #10170d; background: var(--green); font-weight: 950; letter-spacing: -2px;
+      box-shadow: 0 0 28px rgba(184,243,107,.16);
+    }
+    .brand-name { font-size: 20px; font-weight: 850; letter-spacing: -.6px; }
+    .brand-sub { color: var(--muted); font-size: 11px; letter-spacing: 1.7px; margin-top: 3px; text-transform: uppercase; }
+    .build-tag { border: 1px solid var(--line); border-radius: 99px; padding: 7px 11px; color: var(--muted); font: 11px var(--mono); white-space: nowrap; }
+    .hero { display: grid; grid-template-columns: 1.35fr .65fr; gap: 18px; margin-bottom: 18px; }
+    .hero-main, .hero-device, .panel { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(25,35,29,.96), rgba(17,24,20,.96)); }
+    .hero-main { padding: 30px; min-height: 226px; position: relative; overflow: hidden; }
+    .eyebrow { color: var(--green); font: 11px var(--mono); letter-spacing: 2px; text-transform: uppercase; }
+    h1 { margin: 13px 0 10px; font-size: clamp(32px, 5vw, 52px); line-height: 1; letter-spacing: -2px; }
+    .hero-main p { margin: 0; color: var(--muted); max-width: 520px; line-height: 1.65; font-size: 14px; }
+    .hero-orbit { position: absolute; width: 240px; height: 240px; border: 1px solid rgba(184,243,107,.14); border-radius: 50%; right: -45px; bottom: -130px; }
+    .hero-orbit:before, .hero-orbit:after { content: ""; position: absolute; border: 1px solid rgba(184,243,107,.14); border-radius: 50%; inset: 24px; }
+    .hero-orbit:after { inset: 55px; }
+    .hero-device { padding: 24px; display: flex; flex-direction: column; justify-content: space-between; gap: 20px; }
+    .device-top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #68756d; display: inline-block; margin-right: 7px; }
+    .dot.online { background: var(--green); box-shadow: 0 0 12px rgba(184,243,107,.7); }
+    .epaper { background: #e9eee4; color: #182019; border-radius: 9px; width: 100%; max-width: 210px; aspect-ratio: 104 / 212; margin: 0 auto; padding: 15px 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: 0 7px 25px rgba(0,0,0,.27); }
+    .epaper small { font: 9px var(--mono); letter-spacing: 1px; }
+    .epaper strong { font-size: clamp(21px, 3vw, 29px); line-height: 1.1; margin: 19px 0; overflow-wrap: anywhere; }
+    .epaper span { font: 10px var(--mono); color: #566258; }
+    .device-foot { display: flex; justify-content: space-between; color: var(--muted); font: 11px var(--mono); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+    .panel { padding: 22px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
+    .panel-title { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+    .panel-kicker { color: var(--muted); font: 10px var(--mono); letter-spacing: 1px; }
+    .status-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+    .metric { padding: 13px 12px; background: var(--panel-2); border: 1px solid #29372f; border-radius: 13px; min-width: 0; }
+    .metric-label { color: var(--muted); font-size: 10px; margin-bottom: 9px; }
+    .metric-value { font: 15px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; }
+    .btn { border: 1px solid var(--line); color: var(--text); background: #202b24; padding: 11px 14px; border-radius: 11px; font-weight: 700; font-size: 12px; transition: .15s ease; }
+    .btn:hover:not(:disabled) { border-color: #65864c; transform: translateY(-1px); }
+    .btn:disabled { opacity: .38; cursor: not-allowed; }
+    .btn-primary { color: #15200f; background: var(--green); border-color: var(--green); }
+    .btn-primary:hover:not(:disabled) { background: var(--green-2); }
+    .btn-danger { color: #ffaca5; background: rgba(255,120,110,.08); border-color: rgba(255,120,110,.3); }
+    .field { display: grid; gap: 8px; margin-bottom: 15px; }
+    .field label { color: var(--muted); font-size: 11px; font-weight: 650; }
+    textarea, input[type="text"] { width: 100%; background: #0d130f; border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 13px 14px; outline: none; resize: vertical; }
+    textarea { min-height: 116px; line-height: 1.5; }
+    textarea:focus, input:focus { border-color: #83b84e; box-shadow: 0 0 0 3px rgba(184,243,107,.08); }
+    .hint { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 10px; }
+    .leds { display: flex; gap: 14px; flex-wrap: wrap; margin: 5px 0 16px; }
+    .led-choice { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); }
+    .led-choice input { accent-color: var(--green); }
+    .wide { grid-column: 1 / -1; }
+    .log { background: #090e0b; border: 1px solid #243129; border-radius: 12px; padding: 12px; min-height: 108px; max-height: 190px; overflow: auto; font: 10px/1.65 var(--mono); color: #a6b5aa; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .log .ok { color: var(--green); } .log .warn { color: var(--amber); } .log .err { color: var(--red); } .log .diag { color: #9db5c9; }
+    .footer { display: flex; justify-content: space-between; gap: 12px; color: #64756a; font-size: 10px; padding: 18px 3px 0; }
+    .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translate(-50%, 15px); opacity: 0; pointer-events: none; padding: 11px 15px; background: #e3f2d7; color: #1b2816; border-radius: 99px; font-size: 12px; font-weight: 750; box-shadow: 0 8px 35px rgba(0,0,0,.35); transition: .22s ease; z-index: 9; max-width: calc(100% - 32px); text-align: center; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 22px, 600px); padding-top: 16px; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-main { min-height: 190px; padding: 24px; }
+      .hero-device { display: grid; grid-template-columns: 1fr 120px; align-items: center; gap: 12px; padding: 16px; }
+      .device-top, .device-foot { grid-column: 1 / -1; }
+      .epaper { grid-column: 2; grid-row: 2; width: 112px; padding: 8px; }
+      .epaper strong { margin: 10px 0; font-size: 18px; }
+      .grid { grid-template-columns: 1fr; gap: 12px; }
+      .wide { grid-column: auto; }
+      .panel { padding: 18px; }
+      .status-grid { grid-template-columns: repeat(3,1fr); }
+      .footer { flex-direction: column; }
+    }
+    @media (max-width: 390px) {
+      .status-grid { grid-template-columns: 1fr 1fr; }
+      .build-tag { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">BT</div>
+        <div><div class="brand-name">BUG-Tags</div><div class="brand-sub">Independent E-Paper System</div></div>
+      </div>
+      <div class="build-tag">WEB CONSOLE · V0.1.4.2</div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">// OUR HARDWARE · OUR PROTOCOL</div>
+        <h1>Make it<br><span style="color:var(--green)">yours.</span></h1>
+        <p>独立的电子价签控制台。直接通过 Web Bluetooth 连接 BUG-Tags 固件，管理设备、测试通讯并控制墨水屏。</p>
+        <div class="hero-orbit"></div>
+      </div>
+      <div class="hero-device">
+        <div class="device-top"><span><i id="linkDot" class="dot"></i><span id="linkState">未连接</span></span><span>EPD PREVIEW</span></div>
+        <div class="epaper"><small>BUG-TAGS / M3N</small><strong id="previewText">HELLO<br>WORLD</strong><span>104 × 212 · MONO</span></div>
+        <div class="device-foot"><span id="previewMode">LOCAL PREVIEW</span><span>01 / E-PAPER</span></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <div class="panel-head"><h2 class="panel-title">设备连接</h2><span class="panel-kicker">01 / DEVICE</span></div>
+        <div class="actions">
+          <button class="btn btn-primary" id="connectBtn">连接 BUG-Tags</button>
+          <button class="btn" id="disconnectBtn" disabled>断开连接</button>
+          <button class="btn" id="pingBtn" disabled>连接测试</button>
+          <button class="btn" id="readInfoBtn" disabled>重读 BUG_INFO</button>
+          <button class="btn" id="readStatusBtn" disabled>重读 BUG_STATUS</button>
+          <button class="btn" id="eventNotifyBtn" disabled>启用 BUG_EVENT Notify</button>
+          <button class="btn" id="statusNotifyBtn" disabled>启用 BUG_STATUS Notify</button>
+          <button class="btn" id="stopEventNotifyBtn" disabled>停止 BUG_EVENT Notify</button>
+          <button class="btn" id="stopStatusNotifyBtn" disabled>停止 BUG_STATUS Notify</button>
+        </div>
+        <div class="hint" style="margin-top:10px">V0.1.4.1：发送命令前必须先启用 BUG_EVENT Notify；操作期间按钮会锁定，避免重复写入。</div>
+        <div style="height:16px"></div>
+        <div class="status-grid">
+          <div class="metric"><div class="metric-label">固件版本</div><div class="metric-value" id="firmwareValue">—</div></div>
+          <div class="metric"><div class="metric-label">协议版本</div><div class="metric-value" id="protocolValue">—</div></div>
+          <div class="metric"><div class="metric-label">屏幕规格</div><div class="metric-value" id="screenValue">—</div></div>
+        </div>
+        <div style="height:10px"></div>
+        <div class="status-grid">
+          <div class="metric"><div class="metric-label">连接 MTU</div><div class="metric-value" id="mtuValue">—</div></div>
+          <div class="metric"><div class="metric-label">运行时间</div><div class="metric-value" id="uptimeValue">—</div></div>
+          <div class="metric"><div class="metric-label">电池</div><div class="metric-value" id="batteryValue">未接入</div></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head"><h2 class="panel-title">屏幕编辑器</h2><span class="panel-kicker">02 / DISPLAY</span></div>
+        <div class="field">
+          <label for="screenText">要显示的文本（ASCII，最多 39 字节，可换行）</label>
+          <textarea id="screenText" maxlength="39" spellcheck="false">HELLO
+BUG-TAGS</textarea>
+          <div class="hint"><span>最多 3 行；每行最多约 13 个字符</span><span id="textCount">14 / 39</span></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="sendTextBtn" disabled>发送到墨水屏</button>
+          <button class="btn" id="showInfoBtn" disabled>设备信息页</button>
+          <button class="btn btn-danger" id="clearBtn" disabled>清屏</button>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head"><h2 class="panel-title">时钟与指示灯</h2><span class="panel-kicker">03 / CONTROL</span></div>
+        <div class="field"><label>设备时钟</label><div class="actions">
+          <button class="btn" id="syncTimeBtn" disabled>同步本机时间</button>
+          <button class="btn" id="showClockBtn" disabled>显示时钟</button>
+        </div></div>
+        <div class="field"><label>RGB 指示灯测试</label>
+          <div class="leds">
+            <label class="led-choice"><input type="checkbox" id="led1"> CH1 / DIO0</label>
+            <label class="led-choice"><input type="checkbox" id="led2"> CH2 / DIO1</label>
+            <label class="led-choice"><input type="checkbox" id="led3"> CH3 / DIO14</label>
+          </div>
+          <button class="btn" id="ledBtn" disabled>应用灯光状态</button>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head"><h2 class="panel-title">设备状态</h2><span class="panel-kicker">04 / STATUS</span></div>
+        <div class="status-grid">
+          <div class="metric"><div class="metric-label">屏幕初始化</div><div class="metric-value" id="epdValue">—</div></div>
+          <div class="metric"><div class="metric-label">时钟状态</div><div class="metric-value" id="clockValue">—</div></div>
+          <div class="metric"><div class="metric-label">指示灯 GPIO</div><div class="metric-value" id="ledValue">—</div></div>
+        </div>
+        <div style="height:10px"></div>
+        <div class="actions"><button class="btn" id="refreshStatusBtn" disabled>刷新状态</button></div>
+      </article>
+
+      <article class="panel wide">
+        <div class="panel-head"><h2 class="panel-title">通讯日志</h2><div class="actions"><span class="panel-kicker">05 / DEBUG</span><button id="clearLogBtn" class="btn" style="padding:6px 10px">清空日志</button></div></div>
+        <div class="log" id="logBox">[BOOT] BUG-Tags Web Console v0.1.4.2 ready.
+[INFO] V0.1.4.2：BLE 阶段耗时诊断；连接后手动启用 Notify；保留 GATT 操作互斥锁。</div>
+      </article>
+    </section>
+
+    <footer class="footer"><span>BUG-Tags · Firmware V0.1.0 · Protocol V1.0 · Web Diagnostics V0.1.4.2 · <a href="PROTOCOL_V1.md" target="_blank" rel="noopener">协议文档</a></span><span>Web Bluetooth 需要 HTTPS（localhost 开发环境除外）。</span></footer>
+  </main>
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (() => {
+    'use strict';
+    const UUID = {
+      service: 'b07a0001-4255-4754-4147-425547544147',
+      control: 'b07a0002-4255-4754-4147-425547544147',
+      event:   'b07a0003-4255-4754-4147-425547544147',
+      info:    'b07a0004-4255-4754-4147-425547544147',
+      status:  'b07a0005-4255-4754-4147-425547544147'
+    };
+    const CMD = { PING:0x01, INFO:0x02, STATUS:0x03, TEXT_BEGIN:0x10, TEXT_CHUNK:0x11, TEXT_COMMIT:0x12, CLEAR:0x13, DEVICE_INFO:0x14, CLOCK:0x15, SET_TIME:0x20, GET_TIME:0x21, LED:0x30 };
+    const MAGIC0 = 0x42, MAGIC1 = 0x54, PROTOCOL = 1;
+    const $ = id => document.getElementById(id);
+    let device = null, server = null, characteristics = null, sequence = 1;
+    let pending = new Map(), connected = false, toastTimer = 0, connectedAt = 0;
+    let connectedAtPerf = 0;
+    let eventNotifyEnabled = false, statusNotifyEnabled = false;
+    let actionBusy = false;
+    let lastBleAction = '页面启动';
+    let bleOpSerial = 0;
+    const activeBleOps = new Map();
+
+    function log(message, kind='') {
+      const box = $('logBox');
+      const line = document.createElement('div');
+      if (kind) line.className = kind;
+      const now = new Date();
+      const stamp = now.toLocaleTimeString() + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      line.textContent = `[${stamp} | +${performance.now().toFixed(1)}ms] ${message}`;
+      box.appendChild(line); box.scrollTop = box.scrollHeight;
+    }
+    function bleStateSnapshot() {
+      return `GATT=${device?.gatt?.connected ? 'connected' : 'disconnected'}; page=${document.visibilityState || 'unknown'}; EventNotify=${eventNotifyEnabled}; StatusNotify=${statusNotifyEnabled}`;
+    }
+    function beginBleOperation(label) {
+      const token = { id: ++bleOpSerial, label, startedAt: performance.now() };
+      activeBleOps.set(token.id, token);
+      lastBleAction = label;
+      log(`[BLE#${token.id}] BEGIN ${label} | ${bleStateSnapshot()}`, 'diag');
+      return token;
+    }
+    function endBleOperation(token, outcome, error) {
+      const elapsed = performance.now() - token.startedAt;
+      activeBleOps.delete(token.id);
+      const detail = error ? ` | ${error.name || 'Error'}: ${error.message || String(error)}` : '';
+      log(`[BLE#${token.id}] ${outcome} ${token.label} | duration=${elapsed.toFixed(1)}ms | ${bleStateSnapshot()}${detail}`,
+          outcome === 'OK' ? 'ok' : 'err');
+    }
+    async function trackBleOperation(label, operation) {
+      const token = beginBleOperation(label);
+      try {
+        const result = await operation();
+        endBleOperation(token, 'OK');
+        return result;
+      } catch (error) {
+        endBleOperation(token, 'FAIL', error);
+        throw error;
+      }
+    }
+    function logRuntimeEnvironment() {
+      log(`环境：secureContext=${window.isSecureContext}; WebBluetooth=${'bluetooth' in navigator}; visibility=${document.visibilityState || 'unknown'}`, 'diag');
+      log(`浏览器 UA：${navigator.userAgent || 'unknown'}`, 'diag');
+      log(`平台：${navigator.platform || 'unknown'}；语言：${navigator.language || 'unknown'}；协议：${location.protocol}`, 'diag');
+      if (navigator.bluetooth && typeof navigator.bluetooth.getAvailability === 'function') {
+        navigator.bluetooth.getAvailability().then(available => {
+          log(`Web Bluetooth adapter availability=${available}`, 'diag');
+        }).catch(error => {
+          log(`Web Bluetooth availability 查询失败：${error.name || 'Error'}: ${error.message || error}`, 'warn');
+        });
+      }
+    }
+    function toast(message) {
+      const el = $('toast'); el.textContent = message; el.classList.add('show');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2300);
+    }
+    function syncControls() {
+      const locked = actionBusy;
+      $('connectBtn').disabled = connected || locked;
+      $('disconnectBtn').disabled = !connected || locked;
+      // Direct ATT reads do not require BUG_EVENT notifications.
+      ['readInfoBtn','readStatusBtn'].forEach(id => $(id).disabled = !connected || locked);
+      // Every protocol command expects its response on BUG_EVENT Notify.
+      ['pingBtn','sendTextBtn','showInfoBtn','clearBtn','syncTimeBtn','showClockBtn','ledBtn','refreshStatusBtn']
+        .forEach(id => $(id).disabled = !connected || locked || !eventNotifyEnabled);
+      $('eventNotifyBtn').disabled = !connected || locked || eventNotifyEnabled;
+      $('statusNotifyBtn').disabled = !connected || locked || statusNotifyEnabled;
+      $('stopEventNotifyBtn').disabled = !connected || locked || !eventNotifyEnabled;
+      $('stopStatusNotifyBtn').disabled = !connected || locked || !statusNotifyEnabled;
+    }
+    function setConnected(value) {
+      connected = value;
+      $('linkState').textContent = value ? '已连接' : '未连接';
+      $('linkDot').classList.toggle('online', value);
+      if (!value) {
+        eventNotifyEnabled = false;
+        statusNotifyEnabled = false;
+        ['firmwareValue','protocolValue','screenValue','mtuValue','uptimeValue','epdValue','clockValue','ledValue'].forEach(id => $(id).textContent = '—');
+        $('batteryValue').textContent = '未接入';
+        $('previewMode').textContent = 'LOCAL PREVIEW';
+      } else {
+        $('previewMode').textContent = 'DEVICE LINKED';
+      }
+      syncControls();
+    }
+    function crc16(bytes, length=bytes.length) {
+      let crc = 0xFFFF;
+      for (let i=0;i<length;i++) {
+        crc ^= bytes[i] << 8;
+        for (let bit=0;bit<8;bit++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+      }
+      return crc;
+    }
+    function u16(bytes, offset) { return bytes[offset] | (bytes[offset+1] << 8); }
+    function u32(bytes, offset) { return (bytes[offset] | (bytes[offset+1]<<8) | (bytes[offset+2]<<16) | (bytes[offset+3]<<24)) >>> 0; }
+    function put16(bytes, offset, value) { bytes[offset]=value&255; bytes[offset+1]=(value>>>8)&255; }
+    function put32(bytes, offset, value) { bytes[offset]=value&255; bytes[offset+1]=(value>>>8)&255; bytes[offset+2]=(value>>>16)&255; bytes[offset+3]=(value>>>24)&255; }
+    function buildCommand(opcode, payload, seq) {
+      const frame = new Uint8Array(11 + payload.length);
+      frame[0]=MAGIC0; frame[1]=MAGIC1; frame[2]=PROTOCOL; frame[3]=0x01; frame[4]=opcode;
+      put16(frame,5,seq); put16(frame,7,payload.length); frame.set(payload,9);
+      const crc = crc16(frame, 9 + payload.length); put16(frame,9+payload.length,crc);
+      return frame;
+    }
+    function onEvent(event) {
+      const view = event.target.value;
+      const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+      if (bytes.length < 11 || bytes[0]!==MAGIC0 || bytes[1]!==MAGIC1 || bytes[2]!==PROTOCOL) {
+        log('收到无法识别的 BUG_EVENT 数据帧。','warn'); return;
+      }
+      const payloadLength = u16(bytes,7);
+      if (bytes.length !== 11 + payloadLength || u16(bytes,9+payloadLength)!==crc16(bytes,9+payloadLength)) {
+        log('BUG_EVENT CRC 或长度校验失败。','err'); return;
+      }
+      const type=bytes[3], opcode=bytes[4], seq=u16(bytes,5), payload=bytes.slice(9,9+payloadLength);
+      if (type===0x81) {
+        const waiter=pending.get(seq);
+        if (!waiter) { log(`未匹配响应 opcode=0x${opcode.toString(16)} seq=${seq}`,'warn'); return; }
+        pending.delete(seq); clearTimeout(waiter.timer);
+        const status=payload.length ? payload[0] : 0xFF;
+        const data=payload.slice(1);
+        if (status===0) waiter.resolve({opcode,seq,data});
+        else waiter.reject(new Error(`设备返回状态码 0x${status.toString(16).padStart(2,'0')}`));
+      } else {
+        log(`设备事件 type=0x${type.toString(16)} opcode=0x${opcode.toString(16)}`);
+      }
+    }
+    async function command(opcode, payload=new Uint8Array()) {
+      if (!connected || !characteristics?.control) throw new Error('设备尚未连接');
+      if (!eventNotifyEnabled) throw new Error('尚未启用 BUG_EVENT Notify。请先点击“启用 BUG_EVENT Notify”，命令响应通过该特征返回。');
+      const seq=sequence;
+      sequence=(sequence+1)&0xFFFF;
+      if (sequence===0) sequence=1;
+      const frame=buildCommand(opcode,payload,seq);
+      let resolveResponse, rejectResponse;
+      const response=new Promise((resolve,reject) => { resolveResponse=resolve; rejectResponse=reject; });
+      const waiter={resolve:resolveResponse,reject:rejectResponse,timer:0};
+      pending.set(seq,waiter);
+      try {
+        if (typeof characteristics.control.writeValueWithResponse === 'function') {
+          await trackBleOperation('BUG_CONTROL.writeValueWithResponse()', () => characteristics.control.writeValueWithResponse(frame));
+        } else if (typeof characteristics.control.writeValue === 'function') {
+          await trackBleOperation('BUG_CONTROL.writeValue()', () => characteristics.control.writeValue(frame));
+        } else {
+          throw new Error('浏览器未提供可用的 GATT Write API');
+        }
+        log(`TX opcode=0x${opcode.toString(16).padStart(2,'0')} seq=${seq} len=${frame.length}`);
+        // TEXT_COMMIT performs an EPD refresh before firmware sends its response.
+        if (pending.has(seq)) {
+          const timeoutMs = opcode === CMD.TEXT_COMMIT ? 20000 : 8000;
+          waiter.timer=setTimeout(() => {
+            if (pending.get(seq) === waiter) {
+              pending.delete(seq);
+              rejectResponse(new Error(`命令超时：${timeoutMs/1000} 秒内未收到 BUG_EVENT 响应 (opcode=0x${opcode.toString(16)})`));
+            }
+          }, timeoutMs);
+        }
+      } catch (error) {
+        if (waiter.timer) clearTimeout(waiter.timer);
+        if (pending.get(seq) === waiter) pending.delete(seq);
+        throw error;
+      }
+      const result=await response;
+      log(`RX opcode=0x${opcode.toString(16).padStart(2,'0')} seq=${seq} OK (${result.data.length} bytes)`,'ok');
+      return result.data;
+    }
+    function parseInfo(data) {
+      if (data.length !== 14) throw new Error(`设备信息长度异常：${data.length}`);
+      $('protocolValue').textContent=`${data[0]}.${data[1]}`;
+      $('firmwareValue').textContent=`${data[2]}.${data[3]}.${data[4]}`;
+      $('screenValue').textContent=`${u16(data,6)}×${u16(data,8)}`;
+      const features=u32(data,10);
+      log(`DeviceInfo board=${data[5]} features=0x${features.toString(16)}`);
+    }
+    function parseStatus(data) {
+      if (data.length !== 8) return;
+      const flags=data[0], mtu=u16(data,2), uptime=u32(data,4);
+      $('mtuValue').textContent=String(mtu);
+      $('uptimeValue').textContent=formatDuration(uptime);
+      $('epdValue').textContent=(flags&1)?'READY':'OFF';
+      $('clockValue').textContent=(flags&4)?'已同步':'未同步';
+      $('ledValue').textContent=(flags&8)?'READY':'N/A';
+      $('batteryValue').textContent=(data[1]===255)?'未接入':`${data[1]}%`;
+    }
+    function hexBytes(bytes) {
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0').toUpperCase()).join('-');
+    }
+    function characteristicProperties(ch) {
+      const p = ch?.properties || {};
+      return `read=${!!p.read}, write=${!!p.write}, writeWithoutResponse=${!!p.writeWithoutResponse}, notify=${!!p.notify}, indicate=${!!p.indicate}, authenticatedSignedWrites=${!!p.authenticatedSignedWrites}`;
+    }
+    async function readGattCharacteristic(kind, label) {
+      if (!characteristics?.[kind]) throw new Error(`${label} 特征尚未发现`);
+      if (!device?.gatt?.connected) throw new Error('GATT 链路当前未连接');
+      log(`调用 ${label}.readValue()…`);
+      const view = await trackBleOperation(`${label}.readValue()`, () => characteristics[kind].readValue());
+      const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+      log(`${label} Read 成功：${bytes.length} 字节 · ${hexBytes(bytes)}`, 'ok');
+      if (kind === 'info') parseInfo(bytes);
+      if (kind === 'status') parseStatus(bytes);
+      return bytes;
+    }
+    async function readInfo() {
+      return readGattCharacteristic('info', 'BUG_INFO');
+    }
+    async function readStatus() {
+      return readGattCharacteristic('status', 'BUG_STATUS');
+    }
+    function formatDuration(seconds) {
+      const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=seconds%60;
+      return `${h}h ${m}m ${s}s`;
+    }
+    async function refreshStatus() {
+      await readStatus();
+      const commandStatus = await command(CMD.STATUS);
+      if (commandStatus.length === 8) {
+        parseStatus(commandStatus);
+        log(`GET_STATUS 命令响应：${hexBytes(commandStatus)}`, 'ok');
+      }
+    }
+    async function enableNotify(kind) {
+      if (!device?.gatt?.connected || !characteristics?.[kind]) throw new Error('设备未连接或特征尚未发现');
+      const label = kind === 'event' ? 'BUG_EVENT' : 'BUG_STATUS';
+      log(`手动启用 ${label} Notify（浏览器将通过 CCCD 订阅）；开始时间精确到毫秒。`);
+      await trackBleOperation(`${label}.startNotifications() / CCCD subscribe`, () => characteristics[kind].startNotifications());
+      if (!device?.gatt?.connected) throw new Error(`${label} startNotifications() 已返回，但 GATT 链路已断开`);
+      if (kind === 'event') eventNotifyEnabled = true; else statusNotifyEnabled = true;
+      setConnected(true);
+      log(`${label} Notify 已启用；${bleStateSnapshot()}`, 'ok');
+    }
+    async function disableNotify(kind) {
+      if (!device?.gatt?.connected || !characteristics?.[kind]) throw new Error('设备未连接或特征尚未发现');
+      const label = kind === 'event' ? 'BUG_EVENT' : 'BUG_STATUS';
+      log(`手动停止 ${label} Notify…`);
+      await trackBleOperation(`${label}.stopNotifications() / CCCD unsubscribe`, () => characteristics[kind].stopNotifications());
+      if (kind === 'event') eventNotifyEnabled = false; else statusNotifyEnabled = false;
+      setConnected(true);
+      log(`${label} Notify 已停止；${bleStateSnapshot()}`, 'ok');
+    }
+    async function connect() {
+      if (!('bluetooth' in navigator)) throw new Error('当前浏览器不支持 Web Bluetooth。请使用 Android Chrome 或桌面 Chrome/Edge。');
+      let stage='设备选择';
+      log('正在请求附近的 BUG-Tags 设备…');
+      try {
+        device=await trackBleOperation('navigator.bluetooth.requestDevice()', () => navigator.bluetooth.requestDevice({
+          filters:[{namePrefix:'BUG-Tags'}],
+          optionalServices:[UUID.service]
+        }));
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+        log(`已选择设备：${device.name || 'BUG-Tags'}；GATT 当前状态=${device.gatt?.connected ? 'connected' : 'disconnected'}`);
+
+        stage='GATT 链路建立';
+        if (device.gatt?.connected) {
+          server=device.gatt;
+          if (!connectedAt) connectedAt = Date.now();
+          if (!connectedAtPerf) connectedAtPerf = performance.now();
+          lastBleAction = '复用已存在 GATT 连接';
+          log('检测到此页面已有 GATT 链路，复用现有连接。','ok');
+        } else {
+          log('正在调用 device.gatt.connect()…');
+          server=await trackBleOperation('device.gatt.connect()', () => device.gatt.connect());
+          connectedAt = Date.now();
+          connectedAtPerf = performance.now();
+          lastBleAction = 'GATT connect() 成功';
+          log(`GATT 链路已建立；connected=${server.connected}`,'ok');
+        }
+
+        stage='发现 BUG-Tags 主服务';
+        log(`正在查找主服务 ${UUID.service}…`);
+        const service=await trackBleOperation('server.getPrimaryService(BUG-Tags)', () => server.getPrimaryService(UUID.service));
+        log('已找到 BUG-Tags 主服务。','ok');
+
+        stage='发现特征';
+        log('正在发现 BUG_INFO / BUG_CONTROL / BUG_EVENT / BUG_STATUS…');
+        characteristics={
+          info:await trackBleOperation('getCharacteristic(BUG_INFO)', () => service.getCharacteristic(UUID.info)),
+          control:await trackBleOperation('getCharacteristic(BUG_CONTROL)', () => service.getCharacteristic(UUID.control)),
+          event:await trackBleOperation('getCharacteristic(BUG_EVENT)', () => service.getCharacteristic(UUID.event)),
+          status:await trackBleOperation('getCharacteristic(BUG_STATUS)', () => service.getCharacteristic(UUID.status))
+        };
+        log('四个特征均已发现。','ok');
+        log(`BUG_INFO properties: ${characteristicProperties(characteristics.info)}`);
+        log(`BUG_CONTROL properties: ${characteristicProperties(characteristics.control)}`);
+        log(`BUG_EVENT properties: ${characteristicProperties(characteristics.event)}`);
+        log(`BUG_STATUS properties: ${characteristicProperties(characteristics.status)}`);
+
+        characteristics.event.addEventListener('characteristicvaluechanged',onEvent);
+        characteristics.status.addEventListener('characteristicvaluechanged', event => {
+          const view=event.target.value;
+          const bytes=new Uint8Array(view.buffer,view.byteOffset,view.byteLength);
+          log(`BUG_STATUS Notify：${hexBytes(bytes)}`,'ok');
+          parseStatus(bytes);
+        });
+
+        // Passive-link diagnostic: do not issue ATT Read during connect.
+        // The user will manually invoke one Read after observing an idle link.
+        log('连接阶段不自动 Read / Notify。需要发送命令时，请先手动启用 BUG_EVENT Notify。','warn');
+
+        // Strict passive mode: no ATT Read, no CCCD writes, no Notify subscription.
+        lastBleAction = '只完成 GATT connect / service discovery';
+        setConnected(true);
+        log('BUG-Tags GATT 服务已连接。命令按钮会在 BUG_EVENT Notify 启用后开放。','ok');
+        toast('BUG-Tags GATT 已连接');
+      } catch (error) {
+        const name=error?.name || 'Error';
+        const message=error?.message || String(error);
+        const linkState=device?.gatt?.connected ? 'connected' : 'disconnected';
+        log(`失败阶段：${stage}；${name}: ${message}；GATT=${linkState}；最近操作=${lastBleAction}`,'err');
+        // Preserve a live GATT link for diagnosis; do not auto-disconnect on a page-side error.
+        if (device?.gatt?.connected && characteristics) {
+          server=device.gatt;
+          setConnected(true);
+          log('保留当前 GATT 链路，可手动重试读取或主动断开。','warn');
+        } else {
+          characteristics=null;
+          server=null;
+          setConnected(false);
+        }
+        throw new Error(`[${stage}] ${name}: ${message}`);
+      }
+    }
+    function onDisconnected() {
+      const elapsedMs = connectedAtPerf ? performance.now() - connectedAtPerf : -1;
+      const elapsedText = elapsedMs >= 0 ? `${(elapsedMs / 1000).toFixed(3)} 秒 (${elapsedMs.toFixed(1)}ms)` : '时长未知';
+      const visibility = document.visibilityState || 'unknown';
+      const hadEventNotify = eventNotifyEnabled;
+      const hadStatusNotify = statusNotifyEnabled;
+      const inFlight = Array.from(activeBleOps.values(), op => `#${op.id} ${op.label} ${(performance.now() - op.startedAt).toFixed(1)}ms`).join(' ; ') || '无';
+      log(`GATT DISCONNECTED | duration=${elapsedText} | page=${visibility} | lastAction=${lastBleAction} | EventNotify=${hadEventNotify} | StatusNotify=${hadStatusNotify}`, 'warn');
+      log(`断连瞬间尚未结束的 BLE 操作：${inFlight}`, inFlight === '无' ? 'diag' : 'err');
+      for (const [seq,waiter] of pending) { clearTimeout(waiter.timer); waiter.reject(new Error('BLE 已断开')); }
+      pending.clear(); characteristics=null; server=null; setConnected(false); connectedAt=0; connectedAtPerf=0;
+    }
+    async function disconnect() {
+      if (device?.gatt?.connected) device.gatt.disconnect();
+      else onDisconnected();
+    }
+    function asciiPayload(text) {
+      const normalized=text.replace(/\r\n?/g,'\n');
+      for (const ch of normalized) {
+        const code=ch.charCodeAt(0);
+        if (code!==10 && (code<32 || code>126)) throw new Error('当前固件的 V0.1 文本绘制仅支持 ASCII 字符。');
+      }
+      const bytes=new TextEncoder().encode(normalized);
+      if (bytes.length<1 || bytes.length>39) throw new Error('文本长度必须为 1–39 个字节。');
+      return bytes;
+    }
+    async function safeAction(action) {
+      if (actionBusy) {
+        log('已有 BLE 操作尚未完成，本次点击已忽略；请等待当前操作结束。','warn');
+        return;
+      }
+      actionBusy = true;
+      syncControls();
+      try {
+        await action();
+      } catch (error) {
+        log(error?.message || String(error),'err');
+        toast(error?.message || '操作失败');
+      } finally {
+        actionBusy = false;
+        syncControls();
+      }
+    }
+    document.addEventListener('visibilitychange', () => log(`页面可见性变化：${document.visibilityState}；${bleStateSnapshot()}`, 'diag'));
+    window.addEventListener('pagehide', event => log(`页面触发 pagehide；persisted=${!!event.persisted}；${bleStateSnapshot()}`, 'warn'));
+    window.addEventListener('pageshow', event => log(`页面触发 pageshow；persisted=${!!event.persisted}；${bleStateSnapshot()}`, 'diag'));
+    $('connectBtn').addEventListener('click',()=>safeAction(connect));
+    $('disconnectBtn').addEventListener('click',()=>safeAction(disconnect));
+    $('readInfoBtn').addEventListener('click',()=>safeAction(async()=>{ await readInfo(); toast('BUG_INFO 读取成功'); }));
+    $('readStatusBtn').addEventListener('click',()=>safeAction(async()=>{ await readStatus(); toast('BUG_STATUS 读取成功'); }));
+    $('eventNotifyBtn').addEventListener('click',()=>safeAction(()=>enableNotify('event')));
+    $('statusNotifyBtn').addEventListener('click',()=>safeAction(()=>enableNotify('status')));
+    $('stopEventNotifyBtn').addEventListener('click',()=>safeAction(()=>disableNotify('event')));
+    $('stopStatusNotifyBtn').addEventListener('click',()=>safeAction(()=>disableNotify('status')));
+    $('pingBtn').addEventListener('click',()=>safeAction(async()=>{
+      const data=await command(CMD.PING);
+      if (data.length>=8) log(`PONG · uptime ${u32(data,4)} sec`,'ok');
+      toast('设备响应正常');
+    }));
+    $('sendTextBtn').addEventListener('click',()=>safeAction(async()=>{
+      if (!eventNotifyEnabled) throw new Error('请先启用 BUG_EVENT Notify，再发送文本。');
+      const text=$('screenText').value;
+      const bytes=asciiPayload(text);
+      log(`开始文本传输：${bytes.length} 字节；等待每条命令的设备确认。`,'warn');
+      await command(CMD.TEXT_BEGIN,new Uint8Array([bytes.length]));
+      for (let offset=0; offset<bytes.length; offset+=7) {
+        const chunk=bytes.slice(offset,Math.min(offset+7,bytes.length));
+        const packet=new Uint8Array(2+chunk.length); packet[0]=offset; packet[1]=chunk.length; packet.set(chunk,2);
+        log(`发送文本分片 ${offset}–${offset+chunk.length-1} / ${bytes.length}`);
+        await command(CMD.TEXT_CHUNK,packet);
+      }
+      log('所有文本分片已确认，正在提交屏幕刷新…','warn');
+      await command(CMD.TEXT_COMMIT);
+      $('previewText').innerHTML='';
+      for (const line of text.replace(/\r/g,'').split('\n').slice(0,3)) {
+        const span=document.createElement('span'); span.textContent=line || ' '; span.style.display='block'; span.style.fontSize='0.84em'; span.style.margin='2px 0'; $('previewText').appendChild(span);
+      }
+      toast('文本已发送并收到设备确认');
+    }));
+    $('showInfoBtn').addEventListener('click',()=>safeAction(async()=>{ await command(CMD.DEVICE_INFO); $('previewText').textContent='DEVICE\nINFO'; toast('已切换设备信息页'); }));
+    $('clearBtn').addEventListener('click',()=>safeAction(async()=>{ await command(CMD.CLEAR); $('previewText').textContent=''; toast('屏幕已清除'); }));
+    $('syncTimeBtn').addEventListener('click',()=>safeAction(async()=>{
+      const payload=new Uint8Array(6); put32(payload,0,Math.floor(Date.now()/1000)); put16(payload,4,((new Date()).getTimezoneOffset()*-1)&0xFFFF);
+      await command(CMD.SET_TIME,payload); toast('本机时间已同步到设备'); await refreshStatus();
+    }));
+    $('showClockBtn').addEventListener('click',()=>safeAction(async()=>{ await command(CMD.CLOCK); $('previewText').textContent='CLOCK'; toast('已切换时钟页面'); }));
+    $('ledBtn').addEventListener('click',()=>safeAction(async()=>{
+      const mask=($('led1').checked?1:0)|($('led2').checked?2:0)|($('led3').checked?4:0);
+      await command(CMD.LED,new Uint8Array([mask])); toast(`LED mask = ${mask}`);
+    }));
+    $('refreshStatusBtn').addEventListener('click',()=>safeAction(async()=>{ await refreshStatus(); toast('状态已刷新'); }));
+    $('clearLogBtn').addEventListener('click',()=>{ $('logBox').textContent='[INFO] Log cleared.'; });
+    $('screenText').addEventListener('input',()=>{
+      const value=$('screenText').value; $('textCount').textContent=`${new TextEncoder().encode(value).length} / 39`;
+      $('previewText').textContent=value || 'PREVIEW';
+    });
+    setConnected(false);
+    logRuntimeEnvironment();
+    if (!window.isSecureContext) log('当前页面不是安全上下文。GitHub Pages HTTPS 可用；file:// 本地文件通常不能使用 Web Bluetooth。','warn');
+  })();
+  </script>
+</body>
+</html>
