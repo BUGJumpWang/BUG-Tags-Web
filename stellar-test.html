@@ -227,7 +227,7 @@
     const data = $("preview").getContext("2d").getImageData(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT).data;
     const bytes = [];
     let bits = 0, count = 0;
-    // Preserve the established panel RAM scan order, but read source pixels from the opposite X and Y coordinates to rotate the final image by 180 degrees. Preview CSS uses the same 180-degree rotation.
+    // Keep the web preview in its natural upright orientation. Reverse source X and Y only while packing the outgoing bitmap, so the physical EPD receives a 180-degree-rotated image.
     for (let x = IMAGE_WIDTH - 1; x >= 0; x--) {
       for (let y = IMAGE_HEIGHT - 1; y >= 0; y--) {
         const sourceX = IMAGE_WIDTH - 1 - x;
