@@ -59,7 +59,7 @@
     .metric-label{color:var(--muted);font-size:9px;margin-bottom:7px}
     .metric-value{font:11px var(--mono);overflow-wrap:anywhere}
     .canvas-wrap{background:#080c09;border:1px solid #344238;border-radius:12px;padding:10px;display:grid;place-items:center}
-    canvas{display:block;width:min(100%,636px);height:auto;image-rendering:pixelated;background:#fff;border:1px solid #cbd2c8;aspect-ratio:212/104}
+    canvas{display:block;width:min(100%,636px);height:auto;image-rendering:pixelated;background:#fff;border:1px solid #cbd2c8;aspect-ratio:212/104;transform:rotate(180deg)}
     .progress{height:8px;border-radius:20px;background:#0a100c;border:1px solid var(--line);overflow:hidden;margin:10px 0 6px}
     .progress>div{height:100%;width:0;background:var(--green);transition:width .12s}
     .log{background:#090e0b;border:1px solid #243129;border-radius:12px;padding:12px;min-height:120px;max-height:290px;overflow:auto;font:10px/1.7 var(--mono);color:#a6b5aa;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -227,10 +227,12 @@
     const data = $("preview").getContext("2d").getImageData(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT).data;
     const bytes = [];
     let bits = 0, count = 0;
-    // The 212x104 canvas is rotated relative to the 104x212 panel: x follows panel rows (Y counter decrements), while y spans each horizontal 104-pixel row. Reverse y to compensate the panel's horizontal mirror; keep x descending to match firmware RAM scan.
+    // Preserve the established panel RAM scan order, but read source pixels from the opposite X and Y coordinates to rotate the final image by 180 degrees. Preview CSS uses the same 180-degree rotation.
     for (let x = IMAGE_WIDTH - 1; x >= 0; x--) {
       for (let y = IMAGE_HEIGHT - 1; y >= 0; y--) {
-        const index = (IMAGE_WIDTH * 4 * y) + x * 4;
+        const sourceX = IMAGE_WIDTH - 1 - x;
+        const sourceY = IMAGE_HEIGHT - 1 - y;
+        const index = (IMAGE_WIDTH * 4 * sourceY) + sourceX * 4;
         const isWhite = data[index] > 0 && data[index + 1] > 0 && data[index + 2] > 0;
         bits = (bits << 1) | (isWhite ? 1 : 0);
         count++;
